@@ -86,9 +86,7 @@ namespace Aiv.Draw.OpenGL
 				window.CursorVisible = value;
 			}
 		}
-
-		private PixelFormat pixelFormat;
-
+			
 		private Stopwatch watch;
 
 		private float _deltaTime;
@@ -113,6 +111,13 @@ namespace Aiv.Draw.OpenGL
 		private int vertexArrayId;
 		private int shaderProgramId;
 		private int textureId;
+
+		// used for dpi management
+		private float scaleX;
+		private float scaleY;
+
+		private PixelInternalFormat _internalFormat;
+		OpenTK.Graphics.OpenGL.PixelFormat _format;
 
 
 		/// <summary>
@@ -142,14 +147,20 @@ namespace Aiv.Draw.OpenGL
 			this.width = width;
 			this.height = height;
 
-			this.pixelFormat = format;
+			this.scaleX = this.window.Width / this.width;
+			this.scaleY = this.window.Height / this.height;
+
 
 			switch (format) {
 			case PixelFormat.RGB:
 				this.bitmap = new byte[width * height * 3];
+				_internalFormat = PixelInternalFormat.Rgb;
+				_format = OpenTK.Graphics.OpenGL.PixelFormat.Rgb;
 				break;
 			case PixelFormat.RGBA:
 				this.bitmap = new byte[width * height * 4];
+				_internalFormat = PixelInternalFormat.Rgba;
+				_format = OpenTK.Graphics.OpenGL.PixelFormat.Rgba;
 				break;
 			default:
 				throw new Exception ("Unsupported PixelFormat");
@@ -253,7 +264,8 @@ void main(){
 		/// </summary>
 		public int mouseX {
 			get {
-				return this.window.Mouse.X;
+				Point p = new Point (this._mouseState.X, this._mouseState.Y);
+				return (int)((float)this.window.PointToClient(p).X/this.scaleX);
 			}
 		}
 
@@ -262,7 +274,8 @@ void main(){
 		/// </summary>
 		public int mouseY {
 			get {
-				return this.window.Mouse.Y;
+				Point p = new Point (this._mouseState.X, this._mouseState.Y);
+				return (int)((float)this.window.PointToClient(p).Y/this.scaleY);
 			}
 		}
 
@@ -321,27 +334,11 @@ void main(){
 
 
 			this._keyboardState = Keyboard.GetState ();
-			this._mouseState = Mouse.GetState ();
-
-			PixelInternalFormat _internalFormat = PixelInternalFormat.Rgba;
-			OpenTK.Graphics.OpenGL.PixelFormat _format = OpenTK.Graphics.OpenGL.PixelFormat.Rgba;
-
-			switch (this.pixelFormat) {
-			case PixelFormat.RGB:
-				_internalFormat = PixelInternalFormat.Rgb;
-				_format = OpenTK.Graphics.OpenGL.PixelFormat.Rgb;
-				break;
-			case PixelFormat.RGBA:
-				_internalFormat = PixelInternalFormat.Rgba;
-				_format = OpenTK.Graphics.OpenGL.PixelFormat.Rgba;
-				break;
-			default:
-				throw new Exception ("Unsupported PixelFormat");
-			}
+			this._mouseState = Mouse.GetCursorState ();
 
 			GL.Clear (ClearBufferMask.ColorBufferBit);
 
-			GL.TexImage2D (TextureTarget.Texture2D, 0, _internalFormat, this.width, this.height, 0, _format, PixelType.UnsignedByte, this.bitmap);
+			GL.TexImage2D (TextureTarget.Texture2D, 0, this._internalFormat, this.width, this.height, 0, this._format, PixelType.UnsignedByte, this.bitmap);
 
 			GL.DrawArrays (PrimitiveType.TriangleStrip, 0, 4);
 
